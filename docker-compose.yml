@@ -1,0 +1,20 @@
+version: '3'
+services:
+
+  petclinic-db:
+    image: mysql:pc
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=petclinic
+      - MYSQL_DATABASE=petclinic
+    volumes:
+      - "./conf.d:/etc/mysql/conf.d:ro"
+
+  petclinic:
+    depends_on:
+      - petclinic-db
+    image: petclinic:mysqldb
+    ports:
+      - "8003:8080"
+
