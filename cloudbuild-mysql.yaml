@@ -1,0 +1,65 @@
+steps:
+# This step runs the unit tests on the app
+#- name: 'python:3.7-slim'
+#  id: Test
+#  entrypoint: /bin/sh
+#  args:
+#  - -c
+#  - 'pip install flask && python test_app.py -v'
+
+# This step builds the petclinic container image.
+#- name: 'gcr.io/cloud-builders/docker'
+#  id: Build
+#  args:
+#  - 'build'
+#  - '-t'
+#  - 'us-central1-docker.pkg.dev/$PROJECT_ID/springboot/petclinic:$SHORT_SHA'
+#  - './Dockerfile-petclinic.tgz'
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: Build
+  args:
+  - 'build'
+  - '-t'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/springboot/mysql:$SHORT_SHA'
+  - '-t'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/springboot/mysql:pc'
+  - '-f'
+  - './Dockerfile-mysql'
+  - '.'
+
+# This step pushes the image to Artifact Registry
+# The PROJECT_ID and SHORT_SHA variables are automatically
+# replaced by Cloud Build.
+#- name: 'gcr.io/cloud-builders/docker'
+#  id: Push
+#  args:
+#  - 'push'
+#  - 'us-central1-docker.pkg.dev/$PROJECT_ID/springboot/petclinic:$SHORT_SHA'
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: Push
+  args:
+  - 'image'  
+  - 'push'
+  - '-a'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/springboot/mysql'
+
+
+# This step generates the new manifest
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: Generate manifest
+  entrypoint: /bin/sh
+  args:
+  - '-c'
+  - |
+     gcloud source repos clone springboot && \
+     cd springboot && \
+     git checkout manifests && \
+     cp docker-compose.yml docker-compose-updated.yml && \
+     sed -i "s/pc/${SHORT_SHA}/g" docker-compose-updated.yml && \
+     sed -i "s/PROJECT_ID/${PROJECT_ID}/g" docker-compose-updated.yml && \
+     git config user.email $(gcloud auth list --filter=status:ACTIVE --format="value(account)") && \
+     git add docker-compose-updated.yml && \
+     git commit -m "Modified docker-compose-updated.yml" && \
+     git push origin manifests
